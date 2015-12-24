@@ -5,6 +5,7 @@
  */
 namespace samsonframework\resource;
 
+// TODO: Remove File dependency
 use samson\core\File;
 use samsonframework\core\ResourcesInterface;
 
@@ -54,13 +55,14 @@ class ResourceMap implements ResourcesInterface
     }
 
     /**
-     * Find ResourceMap by entry point or create a new one
+     * Find ResourceMap by entry point or create a new one.
+     *
      * @param string $entryPoint Path to search for ResourceMap
      * @param bool $force Flag to force rebuilding Resource map from entry point
      * @param array $ignoreFolders Collection of folders to ignore
      * @return ResourceMap Pointer to ResourceMap object for passed entry point
      */
-    public static function & get($entryPoint, $force = false, $ignoreFolders = array())
+    public static function &get($entryPoint, $force = false, $ignoreFolders = array())
     {
         /** @var ResourceMap $resourceMap Pointer to resource map*/
         $resourceMap = null;
