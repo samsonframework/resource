@@ -5,9 +5,8 @@
  */
 namespace samsonframework\resource;
 
+use samson\core\File;
 use samsonframework\core\ResourcesInterface;
-
-// TODO: Should separated to external module
 
 /**
  * Generic class to manage all web-application resources
