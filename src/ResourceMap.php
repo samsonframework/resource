@@ -19,6 +19,18 @@ class ResourceMap implements ResourcesInterface
     /** Number of lines to read in file to determine its PHP class */
     const CLASS_FILE_LINES_LIMIT = 50;
 
+    /** RegExp for namespace definition matching */
+    const NAMESPACE_DEFINITION_PATTERN =
+        '/^\s*namespace\s+(?<namespace>[^;]+)/iu';
+
+    /** RegExp for use definition matching */
+    const USE_DEFINITION_PATTERN =
+        '/^\s*use\s+(?<class>[^\s;]+)(\s+as\s+(?<alias>[^;]+))*/ui';
+
+    /** RegExp for class definition matching */
+    const CLASS_DEFINITION_PATTERN =
+        '/^\s*(abstract\s*)?class\s+(?<class>[a-z0-9]+)\s+(extends|implements)\s+(?<parent>[a-z0-9\\\\]+)/iu';
+
     /** @var array Collection of classes that are Module ancestors */
     public static $moduleAncestors = array(
         '\samson\core\CompressableExternalModule' => 'CompressableExternalModule',
@@ -33,15 +45,15 @@ class ResourceMap implements ResourcesInterface
     /**
      * Try to find ResourceMap by entry point
      *
-     * @param string        $entryPoint Path to search for ResourceMap
-     * @param ResourceMap   $pointer    Variable where found ResourceMap will be returned
+     * @param string $entryPoint Path to search for ResourceMap
+     * @param ResourceMap $pointer Variable where found ResourceMap will be returned
      *
      * @return bool True if ResourceMap is found for this entry point
      */
     public static function find($entryPoint, & $pointer = null)
     {
         // Pointer to find ResourceMap for this entry point
-        $tempPointer = & self::$gathered[$entryPoint];
+        $tempPointer = &self::$gathered[$entryPoint];
 
         // If we have already build resource map for this entry point
         if (isset($tempPointer)) {
@@ -64,7 +76,7 @@ class ResourceMap implements ResourcesInterface
      */
     public static function &get($entryPoint, $force = false, $ignoreFolders = array())
     {
-        /** @var ResourceMap $resourceMap Pointer to resource map*/
+        /** @var ResourceMap $resourceMap Pointer to resource map */
         $resourceMap = null;
 
         // If we have not already scanned this entry point or not forced to do it again
@@ -139,8 +151,8 @@ class ResourceMap implements ResourcesInterface
         __SAMSON_CONTRIB_PATH,
         'www/cms/',
         'out/',
-	'features/',
-	'ci/'
+        'features/',
+        'ci/'
     );
 
     /** @var array Collection of files that must be ignored by ResourceMap */
@@ -157,14 +169,14 @@ class ResourceMap implements ResourcesInterface
     /**
      * Constructor
      *
-     * @param string $entryPoint    ResourceMap entry point
-     * @param array  $ignoreFolders Collection of folders to be ignored in ResourceMap
-     * @param array  $ignoreFiles   Collection of files to be ignored in ResourceMap
+     * @param string $entryPoint ResourceMap entry point
+     * @param array $ignoreFolders Collection of folders to be ignored in ResourceMap
+     * @param array $ignoreFiles Collection of files to be ignored in ResourceMap
      */
     public function __construct($entryPoint, array $ignoreFolders = array(), array $ignoreFiles = array())
     {
         // Use only real paths
-        $this->entryPoint = realpath($entryPoint).'/';
+        $this->entryPoint = realpath($entryPoint) . '/';
 
         // Combine passed folders to ignore with the default ones
         $ignoreFolders = array_merge($this->ignoreFolders, $ignoreFolders);
@@ -172,7 +184,7 @@ class ResourceMap implements ResourcesInterface
         $this->ignoreFolders = array();
         foreach ($ignoreFolders as $folder) {
             // Build path to folder at entry point
-            $folder = realpath($this->entryPoint.$folder);
+            $folder = realpath($this->entryPoint . $folder);
             // If path not empty - this folder exists
             if (isset($folder{0}) && is_dir($folder)) {
                 $this->ignoreFolders[] = $folder;
@@ -180,14 +192,14 @@ class ResourceMap implements ResourcesInterface
         }
 
         // Build path to web-application or module public folder
-        $publicPath = $this->entryPoint.__SAMSON_PUBLIC_PATH;
+        $publicPath = $this->entryPoint . __SAMSON_PUBLIC_PATH;
         // Iterate all public top level folders to search for internal web-applications
         $files = array();
         foreach (\samson\core\File::dir($publicPath, 'htaccess', '', $files, 1) as $file) {
             // Get only folder path
             $folder = dirname($file);
             // If this is not current web-application public folder and add trailing slash
-            if ($folder.'/' !== $publicPath && !in_array($folder, $this->ignoreFolders)) {
+            if ($folder . '/' !== $publicPath && !in_array($folder, $this->ignoreFolders)) {
                 // Add internal web-application path to ignore collection
                 $this->ignoreFolders[] = $folder;
             }
@@ -197,7 +209,7 @@ class ResourceMap implements ResourcesInterface
         $this->ignoreFiles = array_merge($this->ignoreFiles, $ignoreFiles);
 
         // Store current ResourceMap in ResourceMaps collection
-        self::$gathered[$this->entryPoint] = & $this;
+        self::$gathered[$this->entryPoint] = &$this;
     }
 
     /**
@@ -219,16 +231,16 @@ class ResourceMap implements ResourcesInterface
         $usesAliases = array();
         $usesNamespaces = array();
         // Read lines from file
-        for ($i = 0; $i<self::CLASS_FILE_LINES_LIMIT; $i++) {
+        for ($i = 0; $i < self::CLASS_FILE_LINES_LIMIT; $i++) {
             // Read one line from a file
             $line = fgets($file);
             $matches = array();
 
             // Read one line from a file and try to find namespace definition
-            if ($namespace == '\\' && preg_match('/^\s*namespace\s+(?<namespace>[^;]+)/iu', $line, $matches)) {
+            if ($namespace == '\\' && preg_match(self::NAMESPACE_DEFINITION_PATTERN, $line, $matches)) {
                 $namespace .= $matches['namespace'] . '\\';
                 // Try to find use statements
-            } elseif (preg_match('/^\s*use\s+(?<class>[^\s;]+)(\s+as\s+(?<alias>[^;]+))*/ui', $line, $matches)) {
+            } elseif (preg_match(self::USE_DEFINITION_PATTERN, $line, $matches)) {
                 // Get only class name without namespace
                 $useClass = substr($matches['class'], strrpos($matches['class'], '\\') + 1);
                 // Store alias => full class name collection
@@ -236,11 +248,11 @@ class ResourceMap implements ResourcesInterface
                     $usesAliases[$matches['alias']] = $matches['class'];
                 }
                 // Store class name => full class name collection
-                $usesNamespaces[$useClass] = ($matches['class']{0} == '\\' ? '' : '\\').$matches['class'];
+                $usesNamespaces[$useClass] = ($matches['class']{0} == '\\' ? '' : '\\') . $matches['class'];
                 // Read one line from a file and try to find class pattern
-            } elseif (preg_match('/^\s*(abstract\s*)?class\s+(?<class>[a-z0-9]+)\s+(extends|implements)\s+(?<parent>[a-z0-9\\\]+)/iu', $line, $matches)) {
+            } elseif (preg_match(self::CLASS_DEFINITION_PATTERN, $line, $matches)) {
                 // Store module class name
-                $class = $namespace.trim($matches['class']);
+                $class = $namespace . trim($matches['class']);
                 // Store parent class
                 $extends = trim($matches['parent']);
 
@@ -253,7 +265,7 @@ class ResourceMap implements ResourcesInterface
                     $extends = $usesNamespaces[$extends];
                     // If there is no namespace
                 } elseif (strpos($extends, '\\') === false) {
-                    $extends = $namespace.$extends;
+                    $extends = $namespace . $extends;
                 }
 
                 // Define if this class is Module ancestor
@@ -372,13 +384,13 @@ class ResourceMap implements ResourcesInterface
 
     /**
      * Perform resource gathering starting from $path entry point
-     * @param string    $path   Entry point to start scanning resources
+     * @param string $path Entry point to start scanning resources
      * @return bool True if we had no errors on building path resource map
      */
     public function build($path = null)
     {
         // If no other path is passed use current entry point and convert it to *nix path format
-        $path = isset($path) ? realpath(normalizepath($path)).'/' : $this->entryPoint;
+        $path = isset($path) ? realpath(normalizepath($path)) . '/' : $this->entryPoint;
 
         // Store new entry point
         $this->entryPoint = $path;
@@ -429,11 +441,11 @@ class ResourceMap implements ResourcesInterface
             }
 
             // Iterate all defined object variables
-            foreach (get_object_vars($this) as $var => $value) {
+            foreach (array_keys(get_object_vars($this)) as $var) {
                 // If we have matched resources with that type
                 if (isset($this->resources[$var])) {
                     // Bind object variable to resources collection
-                    $this->$var = & $this->resources[$var];
+                    $this->$var = &$this->resources[$var];
                 }
             }
 
