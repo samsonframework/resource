@@ -148,7 +148,6 @@ class ResourceMap implements ResourcesInterface
         __SAMSON_TEST_PATH,
         __SAMSON_VENDOR_PATH,
         __SAMSON_CONFIG_PATH,
-        __SAMSON_CONTRIB_PATH,
         'www/cms/',
         'out/',
         'features/',
