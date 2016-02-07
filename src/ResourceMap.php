@@ -36,7 +36,8 @@ class ResourceMap implements ResourcesInterface
         '\samson\core\CompressableExternalModule' => 'CompressableExternalModule',
         '\samson\core\ExternalModule' => 'ExternalModule',
         '\samson\core\Service' => 'Service',
-        '\samson\core\CompressableService' => 'CompressableService'
+        '\samson\core\CompressableService' => 'CompressableService',
+        '\samsoncms\Application'=>'Application'
     );
 
     /** @var ResourceMap[] Collection of ResourceMaps gathered by entry points */
@@ -310,10 +311,10 @@ class ResourceMap implements ResourcesInterface
         // If this is a .php file
         if (strpos($path, '.php') !== false && $this->isClass($path, $class, $extends)) {
             // Check if this is not a SamsonPHP core class
-            if (strpos('CompressableExternalModule, ExternalModule, Service, CompressableService', str_replace('\samson\core\\', '', $class)) === false) {
-                return true;
-            } else {
+            if (strpos('CompressableExternalModule, ExternalModule, Service, CompressableService', str_replace('\samson\core\\', '', $class)) === true) {
                 return false;
+            } elseif (in_array($extends, array_keys(self::$moduleAncestors))) {
+                return true;
             }
         }
 
