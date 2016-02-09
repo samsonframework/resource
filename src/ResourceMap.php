@@ -82,7 +82,8 @@ class ResourceMap implements ResourcesInterface
         // If we have not already scanned this entry point or not forced to do it again
         if (!self::find($entryPoint, $resourceMap)) {
             // Create new resource map for this entry point
-            $resourceMap = new ResourceMap($entryPoint, $ignoreFolders);
+            $resourceMap = new ResourceMap();
+            $resourceMap->prepare($entryPoint, $ignoreFolders);
 
             // Build ResourceMap for this entry point
             $resourceMap->build($entryPoint);
@@ -166,16 +167,15 @@ class ResourceMap implements ResourcesInterface
     );
 
     /**
-     * Constructor
-     *
-     * @param string $entryPoint ResourceMap entry point
+     * Prepare ignorance folders
+     * @param string $entryPoint Top level file path for scanning
      * @param array $ignoreFolders Collection of folders to be ignored in ResourceMap
      * @param array $ignoreFiles Collection of files to be ignored in ResourceMap
      */
-    public function __construct($entryPoint, array $ignoreFolders = array(), array $ignoreFiles = array())
+    public function prepare($entryPoint, array $ignoreFolders = array(), array $ignoreFiles = array())
     {
         // Use only real paths
-        $this->entryPoint = realpath($entryPoint) . '/';
+        $this->entryPoint = rtrim(realpath($entryPoint), '/') . '/';
 
         // Combine passed folders to ignore with the default ones
         $ignoreFolders = array_merge($this->ignoreFolders, $ignoreFolders);
@@ -220,7 +220,7 @@ class ResourceMap implements ResourcesInterface
      *
      * @return bool True if file is a class file
      */
-    public function isClass($path, & $class = '', & $extends = '')
+    public function isClass($path, &$class = '', &$extends = '')
     {
         // Class name space, by default - global namespace
         $namespace = '\\';
