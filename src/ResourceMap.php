@@ -29,7 +29,7 @@ class ResourceMap implements ResourcesInterface
 
     /** RegExp for class definition matching */
     const CLASS_DEFINITION_PATTERN =
-        '/^\s*(abstract\s*)?class\s+(?<class>[a-z0-9]+)\s+(extends|implements)\s+(?<parent>[a-z0-9\\\\]+)/iu';
+        '/^\s*(abstract\s*)?class\s+(?<class>[a-z0-9]+)(\s+(extends)\s+(?<parent>[a-z0-9\\\\]+))?(\s+(implements)\s+(?<implements>[a-z0-9\\\\,]+))?/iu';
 
     /** @var array Collection of classes that are Module ancestors */
     public static $moduleAncestors = array(
@@ -122,6 +122,9 @@ class ResourceMap implements ResourcesInterface
 
     /** @var  array Collection of classes by entry point */
     public $classes = array();
+
+    /** @var array Collection of className => class metadata */
+    public $classData = array();
 
     /** @var array Collection of CSS resources */
     public $css = array();
@@ -253,27 +256,62 @@ class ResourceMap implements ResourcesInterface
             } elseif (preg_match(self::CLASS_DEFINITION_PATTERN, $line, $matches)) {
                 // Store module class name
                 $class = $namespace . trim($matches['class']);
-                // Store parent class
-                $extends = trim($matches['parent']);
 
-                // If we have alias for this class
-                if (isset($usesAliases[$extends])) {
-                    // Get full class name
-                    $extends = $usesAliases[$extends];
-                    // Get full class name
-                } elseif (isset($usesNamespaces[$extends])) {
-                    $extends = $usesNamespaces[$extends];
-                    // If there is no namespace
-                } elseif (strpos($extends, '\\') === false) {
-                    $extends = $namespace . $extends;
+                // Create class metadata instance
+                $this->classData[$path] = [
+                    'path' => $path,
+                    'className' => $class,
+                ];
+
+                if (array_key_exists('parent', $matches)) {
+                    // Store parent class
+                    $extends = trim($matches['parent']);
+
+                    // If we have alias for this class
+                    if (isset($usesAliases[$extends])) {
+                        // Get full class name
+                        $extends = $usesAliases[$extends];
+                        // Get full class name
+                    } elseif (isset($usesNamespaces[$extends])) {
+                        $extends = $usesNamespaces[$extends];
+                        // If there is no namespace
+                    } elseif (strpos($extends, '\\') === false) {
+                        $extends = $namespace . $extends;
+                    }
+
+                    $this->classData[$path]['extends'] = $extends;
+
+                    // Define if this class is Module ancestor
+                    if (array_key_exists($extends, self::$moduleAncestors)) {
+                        // Save class as module ancestor
+                        self::$moduleAncestors[$class] = $matches['class'];
+                        // Completed my sir!
+                        return true;
+                    }
                 }
 
-                // Define if this class is Module ancestor
-                if (isset(self::$moduleAncestors[$extends])) {
-                    // Save class as module ancestor
-                    self::$moduleAncestors[$class] = $matches['class'];
-                    // Completed my sir!
-                    return true;
+                // Handle implements interfaces
+                if (array_key_exists('implements', $matches)) {
+                    // Store implementing interface
+                    $implements = explode(',', trim($matches['implements']));
+
+                    $this->classData[$path]['implements'] = [];
+
+                    foreach ($implements as $implement) {
+                        // If we have alias for this class
+                        if (isset($usesAliases[$implement])) {
+                            // Get full class name
+                            $implement = $usesAliases[$implement];
+                            // Get full class name
+                        } elseif (isset($usesNamespaces[$implement])) {
+                            $implement = $usesNamespaces[$implement];
+                            // If there is no namespace
+                        } elseif (strpos($implement, '\\') === false) {
+                            $implement = $namespace . $implement;
+                        }
+
+                        $this->classData[$path]['implements'][] = $implement;
+                    }
                 }
 
                 // Add class to classes array
