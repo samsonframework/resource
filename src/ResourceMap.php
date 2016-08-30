@@ -29,7 +29,7 @@ class ResourceMap implements ResourcesInterface
 
     /** RegExp for class definition matching */
     const CLASS_DEFINITION_PATTERN =
-        '/^\s*(abstract\s*)?class\s+(?<class>[a-z0-9]+)(\s+(extends)\s+(?<parent>[a-z0-9\\\\]+))?(\s+(implements)\s+(?<implements>[a-z0-9\\\\,]+))?/iu';
+        '/^\s*(abstract\s*)?class\s+(?<class>[a-z0-9_]+)(\s+(extends)\s+(?<parent>[a-z0-9\\\\]+))?(\s+(implements)\s+(?<implements>[a-z0-9_\\\\,]+))?/iu';
 
     /** @var array Collection of classes that are Module ancestors */
     public static $moduleAncestors = array(
