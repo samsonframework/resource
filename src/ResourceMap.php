@@ -262,6 +262,31 @@ class ResourceMap implements ResourcesInterface
                     'path' => $path,
                     'className' => $class,
                 ];
+                
+                // Handle implements interfaces
+                if (array_key_exists('implements', $matches)) {
+                    // Store implementing interface
+                    $implements = explode(',', trim($matches['implements']));
+
+                    $this->classData[$path]['implements'] = [];
+
+                    foreach ($implements as $implement) {
+                        $implement = trim($implement);
+                        // If we have alias for this class
+                        if (isset($usesAliases[$implement])) {
+                            // Get full class name
+                            $implement = $usesAliases[$implement];
+                            // Get full class name
+                        } elseif (isset($usesNamespaces[$implement])) {
+                            $implement = $usesNamespaces[$implement];
+                            // If there is no namespace
+                        } elseif (strpos($implement, '\\') === false) {
+                            $implement = $namespace . $implement;
+                        }
+
+                        $this->classData[$path]['implements'][] = $implement;
+                    }
+                }
 
                 if (array_key_exists('parent', $matches)) {
                     // Store parent class
@@ -287,31 +312,6 @@ class ResourceMap implements ResourcesInterface
                         self::$moduleAncestors[$class] = $matches['class'];
                         // Completed my sir!
                         return true;
-                    }
-                }
-
-                // Handle implements interfaces
-                if (array_key_exists('implements', $matches)) {
-                    // Store implementing interface
-                    $implements = explode(',', trim($matches['implements']));
-
-                    $this->classData[$path]['implements'] = [];
-
-                    foreach ($implements as $implement) {
-                        $implement = trim($implement);
-                        // If we have alias for this class
-                        if (isset($usesAliases[$implement])) {
-                            // Get full class name
-                            $implement = $usesAliases[$implement];
-                            // Get full class name
-                        } elseif (isset($usesNamespaces[$implement])) {
-                            $implement = $usesNamespaces[$implement];
-                            // If there is no namespace
-                        } elseif (strpos($implement, '\\') === false) {
-                            $implement = $namespace . $implement;
-                        }
-
-                        $this->classData[$path]['implements'][] = $implement;
                     }
                 }
 
