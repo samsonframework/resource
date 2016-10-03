@@ -17,7 +17,7 @@ use samsonframework\core\ResourcesInterface;
 class ResourceMap implements ResourcesInterface
 {
     /** Number of lines to read in file to determine its PHP class */
-    const CLASS_FILE_LINES_LIMIT = 50;
+    const CLASS_FILE_LINES_LIMIT = 100;
 
     /** RegExp for namespace definition matching */
     const NAMESPACE_DEFINITION_PATTERN =
