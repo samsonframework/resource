@@ -29,7 +29,7 @@ class ResourceMap implements ResourcesInterface
 
     /** RegExp for class definition matching */
     const CLASS_DEFINITION_PATTERN =
-        '/^\s*(abstract\s*)?class\s+(?<class>[a-z0-9_]+)(\s+(extends)\s+(?<parent>[a-z0-9\\\\]+))?(\s+(implements)\s+(?<implements>[a-z0-9_\\\\,]+))?/iu';
+        '/^\s*(abstract\s*)?class\s+(?<class>[a-z0-9_]+)(\s+(extends)\s+(?<parent>[a-z0-9\\\\]+))?(\s+(implements)\s+(?<implements>[a-z0-9_\\\\, ]+))?/iu';
 
     /** @var array Collection of classes that are Module ancestors */
     public static $moduleAncestors = array(
@@ -298,6 +298,7 @@ class ResourceMap implements ResourcesInterface
                     $this->classData[$path]['implements'] = [];
 
                     foreach ($implements as $implement) {
+                        $implement = trim($implement);
                         // If we have alias for this class
                         if (isset($usesAliases[$implement])) {
                             // Get full class name
