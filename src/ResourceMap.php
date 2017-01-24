@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /**
  * Created by Vitaly Iegorov <egorov@samsonos.com>
  * on 24.07.14 at 17:06
@@ -8,11 +8,14 @@ namespace samsonframework\resource;
 // TODO: Remove File dependency
 use samson\core\File;
 use samsonframework\core\ResourcesInterface;
+use samsonframework\filemanager\FileManagerInterface;
+use samsonframework\localfilemanager\LocalFileManager;
 
 /**
  * Generic class to manage all web-application resources
  * @author Vitaly Egorov <egorov@samsonos.com>
  * @copyright 2014 SamsonOS
+ * @deprecated
  */
 class ResourceMap implements ResourcesInterface
 {
@@ -83,7 +86,7 @@ class ResourceMap implements ResourcesInterface
         // If we have not already scanned this entry point or not forced to do it again
         if (!self::find($entryPoint, $resourceMap)) {
             // Create new resource map for this entry point
-            $resourceMap = new ResourceMap();
+            $resourceMap = new ResourceMap(new LocalFileManager());
             $resourceMap->prepare($entryPoint, $ignoreFolders);
 
             // Build ResourceMap for this entry point
@@ -149,10 +152,10 @@ class ResourceMap implements ResourcesInterface
         '.svn/',
         '.git/',
         '.idea/',
-        __SAMSON_CACHE_PATH,
-        __SAMSON_TEST_PATH,
-        __SAMSON_VENDOR_PATH,
-        __SAMSON_CONFIG_PATH,
+        'app/cache/',
+        'tests/',
+        'vendor/',
+        'app/config/',
         'www/cms/',
         'out/',
         'features/',
@@ -170,6 +173,19 @@ class ResourceMap implements ResourcesInterface
         '.readme.md',
     );
 
+    /** @var FileManagerInterface */
+    protected $fileManager;
+
+    /**
+     * ResourceMap constructor.
+     *
+     * @param FileManagerInterface $fileManager
+     */
+    public function __construct(FileManagerInterface $fileManager)
+    {
+        $this->fileManager = $fileManager;
+    }
+
     /**
      * Prepare ignorance folders
      * @param string $entryPoint Top level file path for scanning
@@ -179,7 +195,7 @@ class ResourceMap implements ResourcesInterface
     public function prepare($entryPoint, array $ignoreFolders = array(), array $ignoreFiles = array())
     {
         // Use only real paths
-        $this->entryPoint = rtrim(realpath($entryPoint), '/') . '/';
+        $this->entryPoint = rtrim($entryPoint, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
 
         // Combine passed folders to ignore with the default ones
         $ignoreFolders = array_merge($this->ignoreFolders, $ignoreFolders);
@@ -190,20 +206,6 @@ class ResourceMap implements ResourcesInterface
             $folder = realpath($this->entryPoint . $folder);
             // If path not empty - this folder exists
             if (isset($folder{0}) && is_dir($folder)) {
-                $this->ignoreFolders[] = $folder;
-            }
-        }
-
-        // Build path to web-application or module public folder
-        $publicPath = $this->entryPoint . __SAMSON_PUBLIC_PATH;
-        // Iterate all public top level folders to search for internal web-applications
-        $files = array();
-        foreach (\samson\core\File::dir($publicPath, 'htaccess', '', $files, 1) as $file) {
-            // Get only folder path
-            $folder = dirname($file);
-            // If this is not current web-application public folder and add trailing slash
-            if ($folder . '/' !== $publicPath && !in_array($folder, $this->ignoreFolders)) {
-                // Add internal web-application path to ignore collection
                 $this->ignoreFolders[] = $folder;
             }
         }
@@ -333,7 +335,7 @@ class ResourceMap implements ResourcesInterface
     public function isView($path)
     {
         // Try to match using old-style method by location and using new style by extension
-        return strpos($path, __SAMSON_VIEW_PATH) !== false || strpos($path, '.vphp') !== false;
+        return strpos($path, 'app/view/') !== false || strpos($path, '.vphp') !== false;
     }
 
     /**
@@ -368,7 +370,7 @@ class ResourceMap implements ResourcesInterface
     public function isModel($path)
     {
         // Try to match using old-style method by location
-        return strpos($path, __SAMSON_MODEL_PATH) !== false;
+        return strpos($path, 'app/model/') !== false;
     }
 
     /**
@@ -401,7 +403,7 @@ class ResourceMap implements ResourcesInterface
     public function isController($path)
     {
         // Check old-style by location and new-style function type by file name
-        return strpos($path, __SAMSON_CONTROLLER_PATH) !== false || basename($path, '.php') == 'controller';
+        return strpos($path, 'app/controller/') !== false || basename($path, '.php') == 'controller';
     }
 
     /**
@@ -423,75 +425,77 @@ class ResourceMap implements ResourcesInterface
 
     /**
      * Perform resource gathering starting from $path entry point
+     *
      * @param string $path Entry point to start scanning resources
+     *
      * @return bool True if we had no errors on building path resource map
+     * @throws \InvalidArgumentException
      */
     public function build($path = null)
     {
+        // Validate path
+        if ($path !== null && !file_exists($path)) {
+            throw new \InvalidArgumentException('Path ['.$path.'] does not exists');
+        }
+
         // If no other path is passed use current entry point and convert it to *nix path format
-        $path = isset($path) ? realpath(normalizepath($path)) . '/' : $this->entryPoint;
+        $path = $path ?? $this->entryPoint;
 
         // Store new entry point
         $this->entryPoint = $path;
 
-        // Check for correct path and then try to get files
-        if (file_exists($path)) {
-            // Collect all resources from entry point
-            $files = array();
-            foreach (File::dir($this->entryPoint, null, '', $files, null, 0, $this->ignoreFolders) as $file) {
-                // Get real path to file
-                $file = realpath($file);
+        // Collect all resources from entry point
+        foreach ($this->fileManager->scan([$this->entryPoint], [], $this->ignoreFolders) as $file) {
+            // Get real path to file
+            $file = realpath($file);
 
-                // Check if this file does not has to be ignored
-                if (!in_array(basename($file), $this->ignoreFiles)) {
-                    // Class name
-                    $class = '';
+            // Check if this file does not has to be ignored
+            if (!in_array(basename($file), $this->ignoreFiles)) {
+                // Class name
+                $class = '';
 
-                    // Parent class
-                    $extends = '';
+                // Parent class
+                $extends = '';
 
-                    // We can determine SamsonPHP view files by 100%
-                    if ($this->isView($file)) {
-                        $this->views[] = $file;
-                    } elseif ($this->isGlobal($file)) {
-                        $this->globals[] = $file;
-                    } elseif ($this->isModel($file)) {
-                        $this->models[] = $file;
-                    } elseif ($this->isController($file)) {
-                        $this->controllers[] = $file;
-                    } elseif ($this->isModule($file, $class, $extends)) {
-                        $this->module = array($class, $file, $extends);
-                        $this->modules[] = array($class, $file, $extends);
-                    } elseif ($this->isPHP($file)) {
-                        $this->php[] = $file;
-                    } else { // Save resource by file extension
-                        // Get extension as resource type
-                        $rt = pathinfo($file, PATHINFO_EXTENSION);
+                // We can determine SamsonPHP view files by 100%
+                if ($this->isView($file)) {
+                    $this->views[] = $file;
+                } elseif ($this->isGlobal($file)) {
+                    $this->globals[] = $file;
+                } elseif ($this->isModel($file)) {
+                    $this->models[] = $file;
+                } elseif ($this->isController($file)) {
+                    $this->controllers[] = $file;
+                } elseif ($this->isModule($file, $class, $extends)) {
+                    $this->module = array($class, $file, $extends);
+                    $this->modules[] = array($class, $file, $extends);
+                } elseif ($this->isPHP($file)) {
+                    $this->php[] = $file;
+                } else { // Save resource by file extension
+                    // Get extension as resource type
+                    $rt = pathinfo($file, PATHINFO_EXTENSION);
 
-                        // Check if resource type array cell created
-                        if (!isset($this->resources[$rt])) {
-                            $this->resources[$rt] = array();
-                        }
-
-                        // Add resource to collection
-                        $this->resources[$rt][] = $file;
+                    // Check if resource type array cell created
+                    if (!isset($this->resources[$rt])) {
+                        $this->resources[$rt] = array();
                     }
+
+                    // Add resource to collection
+                    $this->resources[$rt][] = $file;
                 }
             }
-
-            // Iterate all defined object variables
-            foreach (array_keys(get_object_vars($this)) as $var) {
-                // If we have matched resources with that type
-                if (isset($this->resources[$var])) {
-                    // Bind object variable to resources collection
-                    $this->$var = &$this->resources[$var];
-                }
-            }
-
-            return true;
-
-        } else { // Signal error
-            return e('Cannot build ResourceMap from ## - path does not exists', E_SAMSON_CORE_ERROR, $path);
         }
+
+        // Iterate all defined object variables
+        foreach (array_keys(get_object_vars($this)) as $var) {
+            // If we have matched resources with that type
+            if (isset($this->resources[$var])) {
+                // Bind object variable to resources collection
+                $this->$var = &$this->resources[$var];
+            }
+        }
+
+        return true;
+
     }
 }

@@ -12,7 +12,8 @@
     }
   ],
   "require": {
-    "samsonframework/base": "*"
+    "samsonframework/base": "*",
+    "samsonframework/localfilemanager": "*"
   },
   "require-dev": {
     "phpunit/phpunit": "4.*"
