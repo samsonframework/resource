@@ -239,6 +239,12 @@ class ResourceMap implements ResourcesInterface
         for ($i = 0; $i < self::CLASS_FILE_LINES_LIMIT; $i++) {
             // Read one line from a file
             $line = fgets($file);
+
+            // Stop reading if file ended
+            if ($line === false) {
+                break;
+            }
+
             $matches = array();
 
             // Read one line from a file and try to find namespace definition
