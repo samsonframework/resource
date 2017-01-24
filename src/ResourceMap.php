@@ -199,11 +199,12 @@ class ResourceMap implements ResourcesInterface
 
         // Combine passed folders to ignore with the default ones
         $ignoreFolders = array_merge($this->ignoreFolders, $ignoreFolders);
+
         // Clear original ignore folders collection
-        $this->ignoreFolders = array();
+        $this->ignoreFolders = [];
         foreach ($ignoreFolders as $folder) {
             // Build path to folder at entry point
-            $folder = realpath($this->entryPoint . $folder);
+            $folder = realpath($this->entryPoint . DIRECTORY_SEPARATOR . $folder);
             // If path not empty - this folder exists
             if (isset($folder{0}) && is_dir($folder)) {
                 $this->ignoreFolders[] = $folder;
